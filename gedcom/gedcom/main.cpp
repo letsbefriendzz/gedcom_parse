@@ -14,13 +14,42 @@
 
 using namespace std;
 
-class GEDtag
+class GEDline
 {
 public:
 	std::string layer; //?????
 	std::string tag;
 	std::string value;
 };
+
+//one file is getting to be a bit much for this project!
+GEDline parseLine(const char* f)
+{
+	GEDline returnValue;
+	char lvl = '\0';
+	char tag[5] = "\0";
+	int i = 0;
+	int vali = 0;
+	lvl = f[i];
+	char val[255] = "\0";
+	for (i = 2; f[i] != NULL && f[i] != ' ' && f[i] != '\n'; i++)
+	{
+		tag[i - 2] = f[i];
+	}
+
+	i++;
+	while (f[i] != '\0')
+	{
+		val[vali] = f[i];
+		i++;
+		vali++;
+	}
+	val[i] = '\0';
+	returnValue.layer = lvl;
+	returnValue.tag = tag;
+	returnValue.value = val;
+	return returnValue;
+}
 
 class Record
 {
@@ -63,38 +92,33 @@ public:
 		recordLines.clear();
 	}
 
-	void parse()
+	void populate()
 	{
-		if (!(recordLines.size() == 0))
+		/*
+		parseLine(recordLines[i].c_str())
+		*/
+		for (int i = 0; i < recordLines.size(); i++)
 		{
-			this->name = recordLines[2];
-			cout << this->name;
+			if (parseLine(recordLines[i].c_str()).tag == "NAME")
+			{
+				this->name = parseLine(recordLines[i].c_str()).value;
+			}
+			else if (parseLine(recordLines[i].c_str()).tag == "BIRT")
+			{
+				//This is where things get complicated!
+				//GEDCOM uses generic tags for certain subtypes; in this case, the two subtypes of the BIRT
+				//I need are the date and the location. These themselves are spearate tags, however I don't
+				//think that there can be cloned parent tags...
+				this->birth_date = parseLine(recordLines[i].c_str()).value;
+			}
 		}
 	}
-};
 
-GEDtag parseLine(const char* f)
-{
-	GEDtag returnValue;
-	char lvl = '\0';
-	char tag[5] = "\0";
-	int i = 0;
-	lvl = f[i];
-	char val[255] = "\0";
-	for (i = 2; f[i] != NULL && f[i] != ' ' && f[i] != '\n'; i++)
-	{   
-		tag[i - 2] = f[i];
-	}
-	while (f[i] != '\0')
+	std::string getName()
 	{
-		val[i] = f[i];
-		i++;
+		return this->name;
 	}
-	cout << lvl << endl;
-	cout << tag << endl;
-	return returnValue;
-}
-
+};
 
 //MEMORY ACCESS ERRORS EVERYWHERE!
 void readGEDRecord(FILE* f, vector<Record>& records)
@@ -103,7 +127,7 @@ void readGEDRecord(FILE* f, vector<Record>& records)
 	int i = 0;
 	int recIndex = 0;
 	Record addRecord;
-	while (fgets(tempString, 50, f) != NULL && recIndex < 3)
+	while (fgets(tempString, 50, f) != NULL && recIndex < 9)
 	{
 		if (tempString[0] == '0' && !(i == 0))
 		{
@@ -122,12 +146,31 @@ void readGEDRecord(FILE* f, vector<Record>& records)
 	cout << "TOTAL LINES: " << i << "\nTOTAL RECORDS: " << recIndex << "\n";
 }
 
+void displayRecords(std::vector<Record> records)
+{
+	for (int i = 0; i < records.size(); i++)
+	{
+		cout << "\n\nRECORD #" << i + 1 << "\n";
+		for (int j = 0; j < records[i].recordLines.size(); j++)
+		{
+			if (records[i].recordLines[j][0] == '1')
+				cout << "|---";
+			else if (records[i].recordLines[j][0] == '2')
+				cout << "|-------";
+			else if (records[i].recordLines[j][0] == '3')
+				cout << "|-----------";
+			else if (records[i].recordLines[j][0] == '4')
+				cout << "|---------------";
+
+			cout << records[i].recordLines[j];
+		}
+	}
+}
+
 int main(void)
 {
-	FILE* ged = fopen("gm2107.GED", "r");
+	FILE* ged = fopen("C:\\ged_files\\gm2107.GED", "r");
 	vector<Record> records;
-
-
 
 	if (ged == nullptr)
 	{
@@ -140,16 +183,10 @@ int main(void)
 
 		cout << "Size: " << records.size() << "\n";
 
-		parseLine(records[0].recordLines[0].c_str());
+		//records[2].populate();
+		//cout << "getName():\t" << records[2].getName();
 
-		//for (int i = 0; i < records.size(); i++)
-		//{
-		//	cout << "\n\nRECORD #" << i + 1 << "\n";
-		//	for (int j = 0; j < records[i].recordLines.size(); j++)
-		//	{
-		//		cout << records[i].recordLines[j];
-		//	}
-		//}
+		displayRecords(records);
 	}
 
 	return 0;
